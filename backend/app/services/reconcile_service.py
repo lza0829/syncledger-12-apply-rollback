@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import json
 from datetime import datetime, timezone
 from typing import Any
 
-from app.config import FIXTURES_DIR
 from app.db import connect
 from app.engines.reconcile import compare_sides
 from app.repositories import batches as batch_repo
@@ -17,19 +15,12 @@ def _now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
-def _load_fixture(name: str) -> list[dict[str, Any]]:
-    path = FIXTURES_DIR / name
-    with path.open(encoding="utf-8") as f:
-        data = json.load(f)
-    if not isinstance(data, list):
-        raise ValueError(f"fixture {name} must be a JSON array")
-    return data
-
-
 def dashboard_stats() -> dict[str, Any]:
+    from app.services import apply_service
+
     conn = connect()
     try:
-        return {
+        stats = {
             "pair_count": conn.execute("SELECT COUNT(*) c FROM reconcile_pairs").fetchone()["c"],
             "enabled_pairs": conn.execute(
                 "SELECT COUNT(*) c FROM reconcile_pairs WHERE enabled=1"
@@ -45,6 +36,12 @@ def dashboard_stats() -> dict[str, Any]:
         }
     finally:
         conn.close()
+    apply = apply_service.apply_stats()
+    stats["applies"] = apply["applies"]
+    stats["rolled_back"] = apply["rolled_back"]
+    stats["rollback_failed"] = apply["rollback_failed"]
+    stats["dirty_keys"] = apply["dirty_keys"]
+    return stats
 
 
 def list_pairs() -> list[dict[str, Any]]:
@@ -104,7 +101,13 @@ def list_settings() -> dict[str, str]:
 
 
 def run_reconcile(pair_id: int, note: str | None = None) -> dict[str, Any]:
-    """Extract both fixtures, align, persist batch + diffs. No overwrite."""
+    """Extract both sides (fixture + 侧数据 overlay), align, persist batch + diffs.
+
+    重对：批次落库完成后，清除本对账对全部脏标记（dirty_cleared 留痕）——
+    这是脏标记唯一的清除通道，回滚失败/进行中不会走到这里。
+    """
+    from app.services import apply_service
+
     conn = connect()
     try:
         pair = pair_repo.get_pair(conn, pair_id)
@@ -113,8 +116,8 @@ def run_reconcile(pair_id: int, note: str | None = None) -> dict[str, Any]:
         if not pair["enabled"]:
             raise ValueError("pair disabled")
 
-        left_rows = _load_fixture(pair["left_fixture"])
-        right_rows = _load_fixture(pair["right_fixture"])
+        left_rows = apply_service.effective_rows(conn, pair, "left")
+        right_rows = apply_service.effective_rows(conn, pair, "right")
         result = compare_sides(
             left_rows,
             right_rows,
@@ -139,6 +142,7 @@ def run_reconcile(pair_id: int, note: str | None = None) -> dict[str, Any]:
             batch_repo.insert_diff(
                 conn, batch_id=batch_id, pair_id=pair_id, diff=diff, created_at=now
             )
+        dirty_cleared = apply_service.clear_dirty_for_pair(conn, pair_id, batch_id=batch_id, now=now)
         conn.commit()
         batch = batch_repo.get_batch(conn, batch_id)
         assert batch is not None
@@ -146,6 +150,7 @@ def run_reconcile(pair_id: int, note: str | None = None) -> dict[str, Any]:
         batch["pair_title"] = pair["title"]
         batch["policy"] = "record_only"
         batch["counts"] = result["counts"]
+        batch["dirty_cleared"] = dirty_cleared
         batch["diff_preview"] = batch_repo.list_diffs(conn, batch_id=batch_id, limit=20)
         return batch
     finally:

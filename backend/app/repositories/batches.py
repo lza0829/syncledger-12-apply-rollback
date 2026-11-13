@@ -34,6 +34,10 @@ def get_batch(conn: sqlite3.Connection, batch_id: int) -> dict[str, Any] | None:
     return _batch(conn.execute("SELECT * FROM reconcile_batches WHERE id=?", (batch_id,)).fetchone())
 
 
+def get_diff(conn: sqlite3.Connection, diff_id: int) -> dict[str, Any] | None:
+    return _diff(conn.execute("SELECT * FROM reconcile_diffs WHERE id=?", (diff_id,)).fetchone())
+
+
 def list_diffs(
     conn: sqlite3.Connection, *, batch_id: int | None = None, pair_id: int | None = None, limit: int = 200
 ) -> list[dict[str, Any]]:

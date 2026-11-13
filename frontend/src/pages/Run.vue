@@ -61,6 +61,7 @@ onMounted(async () => {
       <p>
         批次 <span class="mono">{{ last.batch_no }}</span> · {{ last.pair_title }} ·
         <span class="tag ok">{{ last.status }}</span>
+        <span v-if="last.dirty_cleared" class="tag warn">重对清脏 {{ last.dirty_cleared }} 键</span>
       </p>
       <div class="stat-grid">
         <div class="stat"><div class="stat-num">{{ last.matched }}</div><div class="stat-label">一致</div></div>

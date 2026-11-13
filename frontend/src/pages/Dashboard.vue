@@ -19,8 +19,12 @@ onMounted(async () => {
         <div class="stat"><div class="stat-num">{{ stats.batch_count }}</div><div class="stat-label">对账批次</div></div>
         <div class="stat"><div class="stat-num">{{ stats.diff_count }}</div><div class="stat-label">差异行</div></div>
         <div class="stat"><div class="stat-num">{{ stats.open_dispositions }}</div><div class="stat-label">未关处置单</div></div>
+        <div class="stat"><div class="stat-num">{{ stats.applies }}</div><div class="stat-label">盖写数</div></div>
+        <div class="stat"><div class="stat-num">{{ stats.rolled_back }}</div><div class="stat-label">回滚成功</div></div>
+        <div class="stat"><div class="stat-num">{{ stats.rollback_failed }}</div><div class="stat-label">回滚失败</div></div>
+        <div class="stat"><div class="stat-num">{{ stats.dirty_keys }}</div><div class="stat-label">仍脏键</div></div>
       </div>
-      <p style="margin-top:1rem">默认策略 <span class="tag">{{ stats.policy }}</span>（只记差异，不盖写两端）</p>
+      <p style="margin-top:1rem">默认策略 <span class="tag">{{ stats.policy }}</span>（只记差异，不自动盖写两端）；盖写/回滚走<router-link to="/dispositions">差异处置</router-link>，全程留痕可回退。</p>
       <p><router-link to="/run">去对账台跑一趟 →</router-link></p>
     </div>
   </div>

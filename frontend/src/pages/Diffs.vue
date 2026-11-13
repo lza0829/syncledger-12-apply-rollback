@@ -25,7 +25,7 @@ watch(() => route.query.batch_id, async () => {
   <div class="page">
     <h1>差异清单</h1>
     <p class="muted">
-      对齐后的差异行。底座只记账；主从盖写、忽略规则、严重级别闸留给后题。
+      对齐后的差异行。底座只记账；盖写/回滚到<router-link to="/dispositions">差异处置</router-link>操作（留旧值、可回退、标脏待重对）。
       <span v-if="route.query.batch_id">当前过滤批次 #{{ route.query.batch_id }}</span>
     </p>
     <p v-if="err" class="tag danger">{{ err }}</p>

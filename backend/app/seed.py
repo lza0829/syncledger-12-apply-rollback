@@ -128,6 +128,57 @@ def init_db() -> None:
                 key TEXT PRIMARY KEY,
                 value TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS apply_records(
+                id INTEGER PRIMARY KEY,
+                pair_id INTEGER NOT NULL,
+                diff_id INTEGER,
+                align_key_json TEXT NOT NULL,
+                key_hash TEXT NOT NULL,
+                direction TEXT NOT NULL,
+                target_side TEXT NOT NULL,
+                fields_json TEXT NOT NULL,
+                old_values_json TEXT,
+                new_values_json TEXT NOT NULL,
+                status TEXT NOT NULL,
+                dirty INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY(pair_id) REFERENCES reconcile_pairs(id),
+                FOREIGN KEY(diff_id) REFERENCES reconcile_diffs(id)
+            );
+            CREATE TABLE IF NOT EXISTS apply_events(
+                id INTEGER PRIMARY KEY,
+                apply_id INTEGER,
+                pair_id INTEGER,
+                rollback_batch_id INTEGER,
+                align_key_json TEXT,
+                event TEXT NOT NULL,
+                detail_json TEXT,
+                created_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS side_values(
+                id INTEGER PRIMARY KEY,
+                pair_id INTEGER NOT NULL,
+                side TEXT NOT NULL,
+                key_hash TEXT NOT NULL,
+                align_key_json TEXT NOT NULL,
+                values_json TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(pair_id, side, key_hash),
+                FOREIGN KEY(pair_id) REFERENCES reconcile_pairs(id)
+            );
+            CREATE TABLE IF NOT EXISTS rollback_batches(
+                id INTEGER PRIMARY KEY,
+                batch_no TEXT NOT NULL UNIQUE,
+                strategy TEXT NOT NULL,
+                status TEXT NOT NULL,
+                total INTEGER NOT NULL,
+                succeeded INTEGER NOT NULL DEFAULT 0,
+                failed INTEGER NOT NULL DEFAULT 0,
+                note TEXT,
+                created_at TEXT NOT NULL,
+                finished_at TEXT
+            );
             """
         )
         if conn.execute("SELECT COUNT(*) c FROM reconcile_pairs").fetchone()["c"] == 0:
